@@ -9,6 +9,7 @@ const mulvector = (v1, v2) => [v1[0] * v2[0] , v1[1] * v2[1] , v1[2] * v2[2]];
 const mulscalar = (v, s) => [v[0] * s, v[1] * s, v[2] * s];
 const addscalar = (v, s) => [v[0] + s, v[1] + s, v[2] + s];
 const addvector = (v1, v2) => [v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]];
+const vmax = (v, m) => [Math.max(v[0], m), Math.max(v[1], m), Math.max(v[2], m)];
 const clamp = (val, lower, upper) => {
     return Math.min(Math.max(val, lower), upper)
 }

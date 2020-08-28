@@ -18,9 +18,9 @@ let makePlane = (side,axis,direction, c) => {
     color.push(c);
     ob.push(vv => direction*vv[axis] + side);
 }
-let makeLight = (pos,radius=1) => {
+let makeLight = (pos,color,radius=1) => {
     lights.push(pos);
-    makeSphere(pos, [1, 1, 1], radius, 1);
+    makeSphere(pos, color, radius, 1);
     materials[materials.length - 1] = 3;
 }
 let makeBox = (b,pos,col) => {
@@ -38,21 +38,50 @@ let makeBox = (b,pos,col) => {
     });
 }
 let e = .01;
-// makePlane(3, 1, 1, [.8, .8, .8]);
-// makePlane(3, 1, -1,[.8, .8, .8]);
-// makePlane(3, 0,  1,[0, .8, 0]);
-// makePlane(3, 0, -1,[.8, 0, 0]);
-// makePlane(5, 2, -1, [.8, .8, .8]);
-// makePlane(8, 2, 1, [.3,.3,.3]);
-// makeSphere([-1.5, -2, 2], [0, 1, 1], 1,.6);
-makeSphere([1.5, -2, 0], [1, 1, 0], 1,.6);
-makeLight([1.5, 1, -2],.3);
-// makeBox(.5,[0,2,0],[1,1,1]);
+makePlane(3, 1, 1, [.8, .8, .8]);
+makePlane(3, 1, -1,[.8, .8, .8]);
+makePlane(3, 0,  1,[0, .8, 0]);
+makePlane(3, 0, -1,[.8, 0, 0]);
+makePlane(5, 2, -1, [.8, .8, .8]);
+makePlane(8, 2, 1, [.3,.3,.3]);
+makeSphere([-1.5, -2, 2], [0, 1, 1], 1,1);
+makeSphere([0, -2, 1], [1, 1, 0], 1,1);
+// makeLight([-2, 1, 2], [1, 1, 1], .3);
+makeLight([2, 2, 2], [1,1,1],.3);
+makeBox(.5,[-2,2,0],[1,1,1]);
+
+
+function shadow(ro, rd) {
+    const K = 2;
+    let d = 0;
+    let res = 1;
+    let index = -1;
+    for (let i = 0; i < 50; ++i){
+        let c = addvector(ro, mulscalar(rd, d));
+        let mind = Infinity;
+        for (let j = 0; j < ob.length; ++j){
+            let ds = ob[j](c);
+            if (ds < mind) {
+                mind = ds;
+                index = j;
+            }
+        }
+        if (materials[index] == 3) {
+            res = min(res, K * mind / d);
+        }
+        d += mind;
+        if (mind < 0.001) return [0, color[index], index];
+        // else if (mind < 0.01) return [d, color[index], index];
+    }
+    return [res,color[index],index];
+}
+
+
 function rayCast(pos, dir,depth) {
     let d = 0;
     let res = [.2, .4, .6];
     let minv, tmin, co,index,c;
-    for (let i = 0; i < 50; ++i) {
+    for (let i = 0; i < 100; ++i) {
         minv = Infinity;
         c = [pos[0] + d * dir[0], pos[1] + d * dir[1], pos[2] + d * dir[2]];
         for (let j = 0; j < ob.length; ++j) {
@@ -70,49 +99,65 @@ function rayCast(pos, dir,depth) {
     if (minv < .01) {
         let reflectedColor = co;
         let normal = getnormal(c, ob[index]);
-        // if (depth > 0 ) {
-        //     const times = 1;
-        //     let ref = [0, 0, 0];
-        //     let offset = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
-        //     let strength = 0//.15;
-        //     for (let i = 0; i < times; ++i){
-        //         let nn = [...normal];
-        //         nn[0] += strength * Math.random();
-        //         nn[1] += strength * Math.random();
-        //         nn[2] += strength * Math.random(); 
-        //         let [__, rr,_] = rayCast(offset, nn, depth - 1);
-        //         ref[0] += rr[0];
-        //         ref[1] += rr[1];
-        //         ref[2] += rr[2];
-        //     }
-        //     ref[0] /= times;
-        //     ref[1] /= times;
-        //     ref[2] /= times;
-        //     reflectedColor = ref;
-        // }
+        if (depth > 0 ) {
+            const times = 1;
+            let ref = [0, 0, 0];
+            let offset = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
+            let strength = 0//.15;
+            for (let i = 0; i < times; ++i){
+                let nn = [...normal];
+                nn[0] += strength * Math.random();
+                nn[1] += strength * Math.random();
+                nn[2] += strength * Math.random(); 
+                let [__, rr,_] = rayCast(offset, nn, depth - 1);
+                ref[0] += rr[0];
+                ref[1] += rr[1];
+                ref[2] += rr[2];
+            }
+            ref[0] /= times;
+            ref[1] /= times;
+            ref[2] /= times;
+            reflectedColor = ref;
+        }
         let materialColor = [
             co[0] * alpha[index] + (1 - alpha[index]) * reflectedColor[0],
             co[1] * alpha[index] + (1 - alpha[index]) * reflectedColor[1],
             co[2] * alpha[index] + (1 - alpha[index]) * reflectedColor[2],
         ];
         if (depth > 0 && materials[index] != 3) {
-            let specStrength = .5;
+            let specStrength = .25;
             let diffuse = 0;
+            let diffuseColor = [0, 0, 0];
             let specular = 0;
+            let specularColor = [0, 0, 0];
             let ambient = 0.1;
+            let shade = 0;
             let point = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
             let viewDir = mulscalar(dir, -1);
+            let total = 150;
+            let strength = .13;
             for (let i in lights) {
-                let lightDirection = normalize([-point[0] + lights[i][0], -point[1] + lights[i][1], -point[2] + lights[i][2]]);
-                let [_, __, mat] = rayCast(point, lightDirection, 0);
-                if (mat == -1 || materials[mat] == 3) {
-                    diffuse += max(dot(lightDirection, normal), 0);
-                    let reflectDir = reflect(mulscalar(lightDirection, -1), normal);
-                    specular += (max(dot(viewDir,reflectDir), 0)**32) * specStrength;
+                for (let j = 0; j < total; ++j) {
+                    let dx = Math.random() * strength - strength;
+                    let dy = Math.random() * strength - strength;
+                    let dz = Math.random() * strength - strength;
+                    let lightDirection = normalize([-point[0] + lights[i][0], -point[1] + lights[i][1], -point[2] + lights[i][2]]);
+                    lightDirection = normalize(addvector(lightDirection, [dx, dy, dz]));
+                    let [_, lightColor, mat] = shadow(point, lightDirection);//rayCast(point, lightDirection, 0);
+                    if (mat == -1 || materials[mat] == 3) {
+                        let currentDiffuse = min(max(dot(lightDirection, normal), 0), 1)/total;
+                        diffuse += currentDiffuse;
+                        diffuseColor = addvector(diffuseColor, mulscalar(lightColor, currentDiffuse))
+                        let reflectDir = reflect(mulscalar(lightDirection, -1), normal);
+                        let currentSpecular = (max(dot(viewDir, reflectDir), 0) ** 32) * specStrength / total;
+                        specular += currentSpecular;
+                        specularColor = addvector(specularColor, mulscalar(lightColor, currentSpecular));
+                    } else shade += _;
                 }
             }
-            materialColor = mulscalar(materialColor, min(max(diffuse,ambient),1));
-            materialColor = addvector(materialColor, mulscalar([1, 1, 1], specular));
+            let ambientColor = mulscalar(materialColor, ambient);
+            let totalLight = addvector(ambientColor, addvector(diffuseColor, specularColor));
+            materialColor = mulvector(materialColor, totalLight);
         }
         return [d, materialColor,index];
     }
@@ -132,4 +177,4 @@ const shader = (x, y) => {
 }
 // let dir = [-2]
 
-console.log(ob[ob.length-1],getnormal([0,.5,0],ob[ob.length-1]))
+console.log(shadow)
