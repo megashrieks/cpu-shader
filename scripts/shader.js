@@ -3,6 +3,7 @@ let ob = [];
 let alpha = [];
 let lights = [];
 let materials = [];
+noise.seed(Math.random())
 let makeSphere = (v, col, radius, a = .65) => {
     materials.push(1);
     alpha.push(a);
@@ -23,12 +24,20 @@ let makeLight = (pos,color,radius=1) => {
     makeSphere(pos, color, radius, 1);
     materials[materials.length - 1] = 3;
 }
-let makeBox = (b,pos,col) => {
+let makeBox = (b,pos,col,theta=0) => {
     color.push(col);
-    alpha.push(1);
+    alpha.push(.8);
     materials.push(4);
+    let ct = Math.cos(theta);
+    let st = Math.sin(theta);
     ob.push(vv => {
-        let q = [abs(vv[0]+pos[0]) - b, abs(vv[1]+pos[1]) - b, abs(vv[2]+pos[2]) - b];
+        vv = [vv[0] - pos[0], vv[1] - pos[1], vv[2] - pos[2]];
+        let pp = [...vv];
+        pp[0] = vv[0] * ct + vv[2] * st;
+        pp[2] = -vv[0] * st + vv[2] * ct;
+        vv = [pp[0]+pos[0],pp[1]+pos[1],pp[2]+pos[2]]
+        let q = [abs(vv[0] - pos[0])-b[0], abs(vv[1] - pos[1])-b[1], abs(vv[2] - pos[2])-b[2]];
+        // let q = [pp[0] - b[0], pp[1] - b[1], pp[2] - b[2]];
         let t = min(max(q[0], max(q[1], q[2])), 0);
         return len(
             max(q[0], 0),
@@ -37,19 +46,20 @@ let makeBox = (b,pos,col) => {
         )+t;
     });
 }
+
 let e = .01;
 makePlane(3, 1, 1, [.8, .8, .8]);
 makePlane(3, 1, -1,[.8, .8, .8]);
-makePlane(3, 0,  1,[0, .8, 0]);
-makePlane(3, 0, -1,[.8, 0, 0]);
+makePlane(3, 0,  1,[.1, .8, .1]);
+makePlane(3, 0, -1,[.8, .1, .1]);
 makePlane(5, 2, -1, [.8, .8, .8]);
-makePlane(8, 2, 1, [.3,.3,.3]);
-makeSphere([-1.5, -2, 2], [0, 1, 1], 1,1);
-makeSphere([0, -2, 1], [1, 1, 0], 1,1);
-// makeLight([-2, 1, 2], [1, 1, 1], .3);
-makeLight([2, 2, 2], [1,1,1],.3);
-makeBox(.5,[-2,2,0],[1,1,1]);
-
+makePlane(8, 2, 1, [.8,.8,.8]);
+makeSphere([-1.5, -2, 2], [0, 1, 1], 1,.9);
+makeSphere([0, -2, 2], [1, 1, 1], 1, 0);
+// makeLight([-2, 1, -6], [1, 1, .8], 1);
+makeLight([0,2,2], [1,1,.6],.5);
+makeBox([.7, 1.9, .7], [1.5,-2,3.5], [1, 1, 1], Math.PI / 3+.01);
+makeBox([.7,1.2,.7], [-1.5, -2, .5], [1, 1, 1], Math.PI / 3 );
 
 function shadow(ro, rd) {
     const K = 2;
@@ -71,7 +81,6 @@ function shadow(ro, rd) {
         }
         d += mind;
         if (mind < 0.001) return [0, color[index], index];
-        // else if (mind < 0.01) return [d, color[index], index];
     }
     return [res,color[index],index];
 }
@@ -96,19 +105,20 @@ function rayCast(pos, dir,depth) {
         d += minv;
         if (d > 100) break;
     }
-    if (minv < .01) {
+    if (minv < .05) {
         let reflectedColor = co;
         let normal = getnormal(c, ob[index]);
-        if (depth > 0 ) {
-            const times = 1;
+        if (depth > 0 && alpha[index] != 1) {
+            const times = 1//30;
             let ref = [0, 0, 0];
             let offset = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
-            let strength = 0//.15;
+            let strength = .05;
             for (let i = 0; i < times; ++i){
                 let nn = [...normal];
                 nn[0] += strength * Math.random();
                 nn[1] += strength * Math.random();
                 nn[2] += strength * Math.random(); 
+                nn = normalize(nn);
                 let [__, rr,_] = rayCast(offset, nn, depth - 1);
                 ref[0] += rr[0];
                 ref[1] += rr[1];
@@ -125,17 +135,17 @@ function rayCast(pos, dir,depth) {
             co[2] * alpha[index] + (1 - alpha[index]) * reflectedColor[2],
         ];
         if (depth > 0 && materials[index] != 3) {
-            let specStrength = .25;
+            let specStrength = .35;
             let diffuse = 0;
             let diffuseColor = [0, 0, 0];
             let specular = 0;
             let specularColor = [0, 0, 0];
-            let ambient = 0.1;
+            let ambient = 0.3;
             let shade = 0;
             let point = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
             let viewDir = mulscalar(dir, -1);
-            let total = 150;
-            let strength = .13;
+            let total = 1//5;
+            let strength = 0//.15;
             for (let i in lights) {
                 for (let j = 0; j < total; ++j) {
                     let dx = Math.random() * strength - strength;
@@ -161,12 +171,11 @@ function rayCast(pos, dir,depth) {
         }
         return [d, materialColor,index];
     }
-    let closest = mulscalar(color[index], ob[index](c));
+    // let closest = mulscalar(color[index], ob[index](c));
     return [d, res,-1];
 }
 
 const shader = (x, y) => {
-    // return 1;
     let v = [x-.5, y-.5, 1]
     let [t,c] = rayCast([0,0, -7], normalize(v),1);
     t = 1/(1+t*.1)
@@ -175,6 +184,3 @@ const shader = (x, y) => {
     // return [t,t,t];
     return [(c[0] * t) ** gamma, (c[1] * t) ** gamma, (c[2] * t) ** gamma];
 }
-// let dir = [-2]
-
-console.log(shadow)
