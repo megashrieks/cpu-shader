@@ -112,7 +112,7 @@ function rayCast(pos, dir,depth) {
             const times = 1//30;
             let ref = [0, 0, 0];
             let offset = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
-            let strength = .05;
+            let strength = 0//.5;
             for (let i = 0; i < times; ++i){
                 let nn = [...normal];
                 nn[0] += strength * Math.random();
@@ -140,12 +140,12 @@ function rayCast(pos, dir,depth) {
             let diffuseColor = [0, 0, 0];
             let specular = 0;
             let specularColor = [0, 0, 0];
-            let ambient = 0.3;
+            let ambient = 0.5;
             let shade = 0;
             let point = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
             let viewDir = mulscalar(dir, -1);
             let total = 1//5;
-            let strength = 0//.15;
+            let strength = .1;
             for (let i in lights) {
                 for (let j = 0; j < total; ++j) {
                     let dx = Math.random() * strength - strength;
@@ -178,7 +178,7 @@ function rayCast(pos, dir,depth) {
 const shader = (x, y) => {
     let v = [x - .5, y - .5, 1];
     v[0] *= size.x/size.y
-    let [t,c] = rayCast([0,0, -7], normalize(v),1);
+    let [t,c] = rayCast([0,0, -5], normalize(v),3);
     t = 1/(1+t*.1)
     t = 1;
     const gamma = 1/2.2;

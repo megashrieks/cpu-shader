@@ -45,8 +45,9 @@ const setcoords = () => {
     switch (RENDER_ORDER) {
         case MIDDLE_OUT:
             let tempcoords = [];
+            let t = ~~Math.sqrt(coords.length);
             for (let i = 0; coords.length; ++i) {
-                let tlen = Math.min(5, Math.ceil(coords.length / 2));
+                let tlen = Math.min(t, Math.ceil(coords.length / 2));
                 tempcoords.push(...coords.splice(coords.length / 2 - tlen, tlen * 2));
             }
             coords = tempcoords.reverse();
@@ -91,7 +92,7 @@ let putChunk = (divisionSize, x, y, data) => {
 let stop = false;
 const draw = () => {
     let func = () => {
-        if (!coords.length) { console.log(++count); stop = true; setcoords(); draw(); }
+        if (!coords.length) { console.log(++count); setcoords(); draw(); }
         let [x, y] = coords.pop();
         let idata = getChunk(ds, x, y);
         for (let i = 0; i < idata.data.length; i += 4) {
