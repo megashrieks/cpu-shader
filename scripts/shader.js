@@ -3,7 +3,7 @@ let ob = [];
 let alpha = [];
 let lights = [];
 let materials = [];
-noise.seed(Math.random())
+// noise.seed(Math.random())
 let makeSphere = (v, col, radius, a = .65) => {
     materials.push(1);
     alpha.push(a);
