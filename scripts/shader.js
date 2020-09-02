@@ -176,7 +176,8 @@ function rayCast(pos, dir,depth) {
 }
 
 const shader = (x, y) => {
-    let v = [x-.5, y-.5, 1]
+    let v = [x - .5, y - .5, 1];
+    v[0] *= size.x/size.y
     let [t,c] = rayCast([0,0, -7], normalize(v),1);
     t = 1/(1+t*.1)
     t = 1;

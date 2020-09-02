@@ -26,8 +26,7 @@ const setup = () => {
     }
     // size.x = size.y = Math.min(can.width, can.height)
     ctx.clearRect(0, 0, can.width, can.height);
-    divisions = { x: 20, y: 20 }//{ x: size.x ** .5, y: size.y ** .5 };
-    divisions.x = divisions.y = size.x ** .5
+    divisions = { x: size.x ** .5, y: size.y ** .5 };
     divisionSize = {
         x: size.x / divisions.x,
         y: size.y / divisions.y
@@ -67,7 +66,7 @@ const setcoords = () => {
 }
 const setColor = (arr, index, func, x, y) => {
     // let actual = offset + index / 4;
-    const res = func(x / size.x, 1 - ~~y / size.y);
+    const res = func(x / size.x, 1 - y / size.y);
     res[0] = Math.max(Math.min(res[0] * 255, 255), 0);
     res[1] = Math.max(Math.min(res[1] * 255, 255), 0);
     res[2] = Math.max(Math.min(res[2] * 255, 255), 0);
@@ -96,7 +95,7 @@ const draw = () => {
         let [x, y] = coords.pop();
         let idata = getChunk(ds, x, y);
         for (let i = 0; i < idata.data.length; i += 4) {
-            setColor(idata.data, i, shader, x * ds.x + (i / 4) % ds.x, y * ds.y + (i / 4) / ds.y);
+            setColor(idata.data, i, shader, x * ds.x + (i / 4) % ds.x, y * ds.y + ~~((i / 4) / ds.x));
             if (stop) return;
         }
         putChunk(ds, x, y, idata);
