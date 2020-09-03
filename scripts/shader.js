@@ -19,14 +19,17 @@ let makePlane = (side,axis,direction, c) => {
     color.push(c);
     ob.push(vv => direction*vv[axis] + side);
 }
-let makeLight = (pos,color,radius=1) => {
+let makeLight = (pos,color,radius=1,sdf) => {
     lights.push(pos);
-    makeSphere(pos, color, radius, 1);
+    if (!sdf)
+        makeSphere(pos, color, radius, 1);
+    else sdf();
     materials[materials.length - 1] = 3;
+    alpha[alpha.length - 1] = 1;
 }
-let makeBox = (b,pos,col,theta=0) => {
+let makeBox = (b,pos,col,theta=0,alp=.9) => {
     color.push(col);
-    alpha.push(.8);
+    alpha.push(alp);
     materials.push(4);
     let ct = Math.cos(theta);
     let st = Math.sin(theta);
@@ -47,19 +50,26 @@ let makeBox = (b,pos,col,theta=0) => {
     });
 }
 
-let e = .01;
+let e = .005;
 makePlane(3, 1, 1, [.8, .8, .8]);
 makePlane(3, 1, -1,[.8, .8, .8]);
 makePlane(3, 0,  1,[.1, .8, .1]);
 makePlane(3, 0, -1,[.8, .1, .1]);
 makePlane(5, 2, -1, [.8, .8, .8]);
 makePlane(8, 2, 1, [.8,.8,.8]);
-makeSphere([-1.5, -2, 2], [0, 1, 1], 1,.9);
-makeSphere([0, -2, 2], [1, 1, 1], 1, 0);
+makeSphere([0, -2, 2.5], [1, 1, 1], 1,0);
+makeSphere([1.5, -2, 0], [1, 1, 1], 1, 0);
 // makeLight([-2, 1, -6], [1, 1, .8], 1);
-makeLight([0,2,2], [1,1,.6],.5);
-makeBox([.7, 1.9, .7], [1.5,-2,3.5], [1, 1, 1], Math.PI / 3+.01);
-makeBox([.7,1.2,.7], [-1.5, -2, .5], [1, 1, 1], Math.PI / 3 );
+makeLight([0, 2, 2], [1, 1, 1], .5);
+// makeLight([-2, 2, 2], [0, .5, .5], .5);
+makeBox([.7, 1.9, .7], [1.5,-2,3.5], [1, 1, 1], Math.PI / 3+.01,.6);
+makeBox([.7,1.2,.7], [-1, -2, 1], [1, 1, 1], Math.PI / 3 ,.6);
+// makeBox([10, 10, 0], [0, 0, 4.9], [192 / 255, 192 / 255, 192 / 255], 0, 0);
+// makeBox([10, 10, 0], [-2.9, 0, 0], [192 / 255, 192 / 255, 192 / 255], Math.PI / 2, 0);
+// makeBox([10, 10, 0], [2.9, 0, 0], [192 / 255, 192 / 255, 192 / 255], Math.PI/2, 0);
+// makeBox([10, 10, 0], [0, 0, -7.9], [192 / 255, 192 / 255, 192 / 255], 0, 0);
+// makeBox([10, 0, 10], [0, 2.9, 0], [192 / 255, 192 / 255, 192 / 255], 0, 0);
+// makeBox([10, 0, 10], [0, -2.9, 0], [192 / 255, 192 / 255, 192 / 255],0,0);
 
 function shadow(ro, rd) {
     const K = 2;
@@ -103,30 +113,29 @@ function rayCast(pos, dir,depth) {
         }
         // if(minv == Infinity) console.log(pos,dir,c,d,minv,tmin)
         d += minv;
-        if (d > 100) break;
+        if (d > 20 || minv <= 0.001) break;
     }
-    if (minv < .05) {
+    if (minv < .1) {
         let reflectedColor = co;
         let normal = getnormal(c, ob[index]);
         if (depth > 0 && alpha[index] != 1) {
-            const times = 1//30;
+            const times = alpha[index] == 0 ? 1 : 1;
             let ref = [0, 0, 0];
             let offset = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
-            let strength = 0//.5;
-            for (let i = 0; i < times; ++i){
-                let nn = [...normal];
+            let strength = alpha[index] == 0 ? 0 : .5;
+            let reflected = reflect(dir, normal); //reflect with respect to the eye
+            for (let i = 0; i < times; ++i) {
+                let nn;
+                if(alpha[index] == 0) nn = [...reflected];
+                else nn = [...normal] //reflect with normal
                 nn[0] += strength * Math.random();
                 nn[1] += strength * Math.random();
-                nn[2] += strength * Math.random(); 
+                nn[2] += strength * Math.random();
                 nn = normalize(nn);
-                let [__, rr,_] = rayCast(offset, nn, depth - 1);
-                ref[0] += rr[0];
-                ref[1] += rr[1];
-                ref[2] += rr[2];
+                let [__, rr, _] = rayCast(offset, nn, depth - 1);
+                ref = addvector(ref, rr);
             }
-            ref[0] /= times;
-            ref[1] /= times;
-            ref[2] /= times;
+            ref = mulscalar(ref, times);
             reflectedColor = ref;
         }
         let materialColor = [
@@ -140,12 +149,13 @@ function rayCast(pos, dir,depth) {
             let diffuseColor = [0, 0, 0];
             let specular = 0;
             let specularColor = [0, 0, 0];
-            let ambient = 0.5;
+            let ambient = .3;
             let shade = 0;
             let point = [pos[0] + (d - e) * dir[0], pos[1] + (d - e) * dir[1], pos[2] + (d - e) * dir[2]];
             let viewDir = mulscalar(dir, -1);
             let total = 1//5;
             let strength = .1;
+            let totalLight, ambientColor;
             for (let i in lights) {
                 for (let j = 0; j < total; ++j) {
                     let dx = Math.random() * strength - strength;
@@ -165,22 +175,33 @@ function rayCast(pos, dir,depth) {
                     } else shade += _;
                 }
             }
-            let ambientColor = mulscalar(materialColor, ambient);
-            let totalLight = addvector(ambientColor, addvector(diffuseColor, specularColor));
+            ambientColor = mulscalar(materialColor, ambient);
+            totalLight = addvector(ambientColor, addvector(diffuseColor, specularColor));
+            // if(totalLight[0] ==0 && totalLight[1] == 0 && totalLight[2] == 0) throw [mat,materials[mat]]
             materialColor = mulvector(materialColor, totalLight);
         }
         return [d, materialColor,index];
     }
-    // let closest = mulscalar(color[index], ob[index](c));
-    return [d, res,-1];
+    let closest = mulscalar(color[index], ob[index](c));
+    return [d, closest,-1];
 }
 
 const shader = (x, y) => {
     let v = [x - .5, y - .5, 1];
-    v[0] *= size.x/size.y
-    let [t,c] = rayCast([0,0, -5], normalize(v),3);
-    t = 1/(1+t*.1)
-    t = 1;
+    v[0] *= size.x / size.y
+    let col = [0, 0, 0];
+    let times = 1;
+    let strength = 250;
+    for (let i = 0; i < times; ++i) {
+        v[0] += (Math.random() - .5) / strength;
+        v[1] += (Math.random() - .5) / strength;
+        let [t, c] = rayCast([0, 0, -5], normalize(v), 15);
+        col = addvector(col, c);
+    }
+    col = mulscalar(col, 1 / times);
+    c = col;
+    // t = 1/(1+t*.1)
+    let t = 1;
     const gamma = 1/2.2;
     // return [t,t,t];
     return [(c[0] * t) ** gamma, (c[1] * t) ** gamma, (c[2] * t) ** gamma];

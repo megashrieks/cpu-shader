@@ -20,10 +20,10 @@ const TOP_TO_BOTTOM = 3;
 const RENDER_ORDER = MIDDLE_OUT;
 
 const setup = () => {
-    size = {
-        x: can.width,
-        y: can.height
-    }
+    // size = {
+    //     x: can.width,
+    //     y: can.height
+    // }
     // size.x = size.y = Math.min(can.width, can.height)
     ctx.clearRect(0, 0, can.width, can.height);
     divisions = { x: size.x ** .5, y: size.y ** .5 };
