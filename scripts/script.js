@@ -1,24 +1,8 @@
-const can = document.getElementById("can");
-const ctx = can.getContext("2d");
-let size = {
-    x: 500,
-    y: 500
-};
-let idata;
-let count = 0;
 const resize = () => {
     can.width = window.innerWidth;
     can.height = window.innerHeight;
 }
 window.onresize = resize();
-let divisions, divisionSize, ds, coords;
-//enums
-//rendering order
-const MIDDLE_OUT = 1;
-const RANDOM = 2;
-const TOP_TO_BOTTOM = 3;
-const RENDER_ORDER = MIDDLE_OUT;
-
 const setup = () => {
     // size = {
     //     x: can.width,
@@ -71,7 +55,7 @@ const setColor = (arr, index, func, x, y) => {
     res[0] = Math.max(Math.min(res[0] * 255, 255), 0);
     res[1] = Math.max(Math.min(res[1] * 255, 255), 0);
     res[2] = Math.max(Math.min(res[2] * 255, 255), 0);
-    if (!count) {
+    if (count==1) {
         arr[index] = res[0]
         arr[index + 1] = res[1];
         arr[index + 2] = res[2];
@@ -89,7 +73,6 @@ let putChunk = (divisionSize, x, y, data) => {
     ctx.putImageData(data, can.width / 2 - size.x / 2 + divisionSize.x * x, can.height / 2 - size.y / 2 + divisionSize.y * y);
 }
 //so I can stop through console
-let stop = false;
 const draw = () => {
     let func = () => {
         if (!coords.length) { console.log(++count); setcoords(); draw(); }
